@@ -1,0 +1,26 @@
+name: $(SourceBranchName)-$(Date:yyyyMMdd)-$(Rev:rrr)
+
+resources:
+  repositories:
+  - repository: templates
+    type: git
+    name: common/azure-pipeline-templates
+    ref: refs/heads/main
+
+trigger:
+  branches:
+    include:
+    - main
+  paths:
+   include:
+     - /prd/*
+
+pool: terraform-prod
+
+stages:
+  - template: terraform/terraform.yaml@templates
+    parameters:
+      TFEnvironment: 'prod'
+      secureVarsFile: 'xxx-xxx.env'
+      deploymentEnvironment: PROD-Infra
+      terraformVersion: latest

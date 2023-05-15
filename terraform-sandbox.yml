@@ -1,0 +1,26 @@
+name: $(SourceBranchName)-$(Date:yyyyMMdd)-$(Rev:rrr)
+
+resources:
+  repositories:
+  - repository: templates
+    type: git
+    name: common/azure-pipeline-templates
+    ref: refs/heads/main
+
+trigger:
+  branches:
+    include:
+    - main
+  paths:
+   include:
+     - /sbx/*
+     
+pool: terraform
+
+stages:
+  - template: terraform/terraform.yaml@templates
+    parameters:
+      TFEnvironment: 'sandbox'
+      secureVarsFile: 'xxx-xxx.env'
+      deploymentEnvironment: Sandbox-Infra
+      terraformVersion: latest
