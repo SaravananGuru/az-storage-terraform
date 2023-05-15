@@ -18,44 +18,52 @@ provider "azurerm" {
 # Local value declaration
 
 locals {
-  storage_account_suffix = [
-    {
-      account_name                  = "stprodshpequip"
-      account_tier                  = "Standard"
-      adls_replication              = "LRS"
-      containers                    = "raw,stage,analytic,hubscan"
-      file_shares                   = ""
-      is_hns_enabled                = "true"
-      is_private_end_point_required = "false"
-      queues                        = ""
-      eai                           = "3535162"
-    }]
+  account_name                  = "stdesignitsftwr"
+  account_tier                  = "Standard"
+  adls_replication              = "LRS"
+  containers                    = {
+    raw = { type = "blob", access_type = "private" },
+    stage = { type = "blob", access_type = "private" },
+    analytic = { type = "blob", access_type = "private" }
+  }
+  account_kind                  = "StorageV2"
+  private_endpoints = {
+    agility-sbx = {
+    subnet_id            = data.azurerm_subnet.pep_agility_sbx.id
+    subresource_name     = "blob"
+    private_dns_zone_id  = local.private_dns_zones["privatelink.blob.core.windows.net"].id
+    is_manual_connection = false
+    on_prem_zone_name    = local.on_premise_dns.private_dns_zones["privatelink.blob.core.windows.net"].name
+    on_prem_rg           = local.on_premise_dns.private_dns_zones["privatelink.blob.core.windows.net"].resource_group_name
+    allow_on_prem_access = true
+    },
+    agility-sbx-dfs = {
+    subnet_id            = data.azurerm_subnet.pep_agility_sbx.id
+    subresource_name     = "dfs"
+    private_dns_zone_id  = local.private_dns_zones["privatelink.dfs.core.windows.net"].id
+    is_manual_connection = false
+    on_prem_zone_name    = local.on_premise_dns.private_dns_zones["privatelink.dfs.core.windows.net"].name
+    on_prem_rg           = local.on_premise_dns.private_dns_zones["privatelink.dfs.core.windows.net"].resource_group_name
+    allow_on_prem_access = true
+    }
+  }
 
-    private_endpoints = [{
-      name                 = "stprdshpequipblobst"
-      storage_account      = "stprodshpequip"
-      subnet_id            = "/subscriptions/aa365c78-baef-4db6-9b9a-682db6e1de6d/resourceGroups/centralus-fxe-data-mgmt-prd-network-rg/providers/Microsoft.Network/virtualNetworks/centralus-fxe-data-mgmt-prd-fxconnect-vnet/subnets/datalake"
-      subresource_name     = "blob"
-      zone_name            = "privatelink.blob.core.windows.net"
-      private_dns_zone_id  = "/subscriptions/aa365c78-baef-4db6-9b9a-682db6e1de6d/resourceGroups/centralus-fxe-data-mgmt-prd-private-dns-rg/providers/Microsoft.Network/privateDnsZones/privatelink.blob.core.windows.net"
-      is_manual_connection = false
-      virtual_network_subnets = ["/subscriptions/aa365c78-baef-4db6-9b9a-682db6e1de6d/resourceGroups/centralus-fxe-data-mgmt-prd-network-rg/providers/Microsoft.Network/virtualNetworks/centralus-fxe-data-mgmt-prd-main-vnet/subnets/devops-agents", "/subscriptions/aa365c78-baef-4db6-9b9a-682db6e1de6d/resourceGroups/centralus-fxe-data-mgmt-prd-network-rg/providers/Microsoft.Network/virtualNetworks/centralus-fxe-data-mgmt-prd-fxconnect-vnet/subnets/datalake"]
-      allow_subnet_rule = false 
-      allow_pep = true
-    }]
+  virtual_network_subnet_ids = []
 }
 
 # storage account creation
 
 module "DataLakeStorage" {
-  source                     = "git::git@ssh.dev.azure.com:v3/fxe-data-mgmt/common/terraform-azurerm-auxiliaryDataLakeStorage?ref=main"
-  storage_account_list       = local.storage_account_list
-  environment_name           = local.environment_name
-  location                   = local.location
-  resource_group_name        = azurerm_resource_group.this["primary"].name
-  subnet_id                  = local.subnet_id
-  subresource_names          = local.subresource_names
-  private_endpoints          = local.private_endpoints
-  tags                       = local.common_dmo_tags
-  app_tags                   = local.pip_tags
+  source                           = "https://github.com/SaravananGuru/az-storage-template.git"
+  name                             = local.account_name
+  resource_group_name              = local.resource_obj.name
+  labels_context                   = module.centralus_labels.context
+  storage_account_enable_hns       = true
+  storage_account_kind 		         = local.account_kind
+  storage_account_tier		         = local.account_tier
+  storage_account_replication_type = local.adls_replication
+  private_endpoints                = local.private_endpoints
+  containers                       = local.containers
+  tags                             = module.centralus_labels.tags
+  virtual_network_subnet_ids       = local.virtual_network_subnet_ids
 }
