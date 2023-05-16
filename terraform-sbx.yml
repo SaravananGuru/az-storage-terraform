@@ -4,7 +4,7 @@ resources:
   repositories:
   - repository: templates
     type: git
-    name: common/azure-pipeline-templates
+    name: az-pipeline-terraform
     ref: refs/heads/main
 
 trigger:
